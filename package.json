@@ -1,0 +1,15 @@
+{
+  "name": "heidis-cleaning-api",
+  "version": "1.0.0",
+  "description": "Backend para pagos de Heidi's Cleaning",
+  "main": "api/create-payment-intent.js",
+  "scripts": {
+    "dev": "vercel dev"
+  },
+  "dependencies": {
+    "stripe": "^12.0.0"
+  },
+  "engines": {
+    "node": "18.x"
+  }
+}
