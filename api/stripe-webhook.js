@@ -412,20 +412,43 @@ async function sendGiftCardSms(supabase, giftCard) {
 
 async function buildGiftCardPreviewImage(giftCard) {
   const templatePath = path.join(process.cwd(), 'assets', 'gift-card-template.png');
+  const fontPath = path.join(process.cwd(), 'assets', 'Poppins-Bold.ttf');
   const giftCardCode = escapeXml(giftCard.code || 'Code unavailable');
-  const codeOverlay = Buffer.from(`
-    <svg width="1100" height="618" viewBox="0 0 1100 618" xmlns="http://www.w3.org/2000/svg">
-      <rect x="575" y="432" width="445" height="118" rx="24" fill="#12243B" fill-opacity="0.96"/>
-      <text x="797.5" y="474" text-anchor="middle" fill="#F693BD"
-        font-family="Poppins, Arial, sans-serif" font-size="21" font-weight="600" letter-spacing="3">REDEMPTION CODE</text>
-      <text x="797.5" y="526" text-anchor="middle" fill="#FFFFFF"
-        font-family="Poppins, Arial, sans-serif" font-size="38" font-weight="700" letter-spacing="1.5">${giftCardCode}</text>
+  const codePanel = Buffer.from(`
+    <svg width="445" height="118" xmlns="http://www.w3.org/2000/svg">
+      <rect width="445" height="118" rx="24" fill="#12243B" fill-opacity="0.96"/>
     </svg>
   `);
+  const redemptionLabel = await sharp({
+    text: {
+      text: '<span foreground="#F693BD" font_desc="Poppins Bold 12" letter_spacing="2200">REDEMPTION CODE</span>',
+      font: 'Poppins',
+      fontfile: fontPath,
+      width: 445,
+      height: 32,
+      align: 'centre',
+      rgba: true
+    }
+  }).png().toBuffer();
+  const redemptionCode = await sharp({
+    text: {
+      text: `<span foreground="#FFFFFF" font_desc="Poppins Bold 23" letter_spacing="500">${giftCardCode}</span>`,
+      font: 'Poppins',
+      fontfile: fontPath,
+      width: 445,
+      height: 51,
+      align: 'centre',
+      rgba: true
+    }
+  }).png().toBuffer();
 
   return sharp(templatePath)
     .resize(1100, 618, { fit: 'fill' })
-    .composite([{ input: codeOverlay, top: 0, left: 0 }])
+    .composite([
+      { input: codePanel, top: 432, left: 575 },
+      { input: redemptionLabel, top: 449, left: 575 },
+      { input: redemptionCode, top: 493, left: 575 }
+    ])
     .png({ compressionLevel: 9 })
     .toBuffer();
 }
@@ -455,9 +478,8 @@ function buildGiftCardEmail(giftCard) {
         <td align="center" style="padding:32px 14px;">
           <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;max-width:640px;background:#ffffff;border:1px solid #d7e7f3;border-radius:18px;border-collapse:separate;overflow:hidden;">
             <tr>
-              <td align="center" bgcolor="#12243b" style="padding:28px 24px;background:#12243b;color:#ffffff;border-radius:17px 17px 0 0;">
-                <p style="margin:0 0 8px;font-family:Poppins,Arial,Helvetica,sans-serif;font-size:13px;line-height:1.4;letter-spacing:2px;text-transform:uppercase;font-weight:600;">Heidi's Cleaning</p>
-                <h1 style="margin:0;font-family:Poppins,Arial,Helvetica,sans-serif;font-size:30px;line-height:1.25;font-weight:700;">You received a Gift Card</h1>
+              <td align="center" bgcolor="#33a8dc" style="padding:0;background:#33a8dc;border-radius:17px 17px 0 0;overflow:hidden;">
+                <img src="cid:gift-card-header" width="640" alt="Heidi's Inc. Cleaning &amp; Maintenance" style="display:block;width:100%;max-width:640px;height:auto;border:0;border-radius:17px 17px 0 0;">
               </td>
             </tr>
             <tr>
@@ -581,18 +603,29 @@ async function handleGiftCardPurchase(paymentIntent) {
 
     try {
       const giftCardPreviewImage = await buildGiftCardPreviewImage(giftCard);
+      const giftCardHeaderImage = await sharp(
+        path.join(process.cwd(), 'assets', 'gift-card-email-header.png')
+      ).png({ compressionLevel: 9 }).toBuffer();
       const { data, error } = await resend.emails.send({
         from: fromEmail,
         to: giftCard.recipient_email,
         cc,
         subject: `${giftCard.sender_name} sent you a Heidi's Cleaning Gift Card`,
         html: buildGiftCardEmail(giftCard),
-        attachments: [{
-          filename: 'heidis-gift-card.png',
-          content: giftCardPreviewImage,
-          contentType: 'image/png',
-          contentId: 'gift-card-preview'
-        }]
+        attachments: [
+          {
+            filename: 'heidis-gift-card.png',
+            content: giftCardPreviewImage,
+            contentType: 'image/png',
+            contentId: 'gift-card-preview'
+          },
+          {
+            filename: 'heidis-gift-card-header.png',
+            content: giftCardHeaderImage,
+            contentType: 'image/png',
+            contentId: 'gift-card-header'
+          }
+        ]
       }, {
         idempotencyKey: `gift-card/${paymentIntent.id}`
       });
