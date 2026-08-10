@@ -507,7 +507,7 @@ function buildGiftCardEmail(giftCard) {
                   </tr>
                 </table>
 
-                <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#ffffff" style="width:100%;max-width:530px;margin:18px auto 0;background:#ffffff;border:2px solid #54b6e8;border-radius:14px;border-collapse:separate;">
+                <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;max-width:530px;margin:18px auto 0;border-collapse:separate;">
                   <tr>
                     <td align="center" style="padding:17px 12px 5px;">
                       <p style="margin:0;font-family:Poppins,Arial,Helvetica,sans-serif;font-size:11px;line-height:1.4;color:#214e78;letter-spacing:1.8px;text-transform:uppercase;font-weight:600;">Redemption code · Select to copy</p>
