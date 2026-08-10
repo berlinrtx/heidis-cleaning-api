@@ -2,6 +2,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const {
   buildGiftCardSms,
+  generateGiftCardCode,
   normalizeDeliveryMethod,
   shouldDeliverBy
 } = require('../lib/gift-card-delivery');
@@ -24,6 +25,21 @@ test('SMS delivery fails closed when a redemption code is missing', () => {
     () => buildGiftCardSms({ original_amount: '100.00' }),
     /redemption code is required/i
   );
+});
+
+test('test SMS is clearly non-redeemable', () => {
+  const sms = buildGiftCardSms({
+    is_test: true,
+    code: 'HC-GC-TEST-0001',
+    original_amount: '10.00'
+  });
+
+  assert.match(sms, /^TEST —/);
+  assert.match(sms, /cannot be redeemed/i);
+});
+
+test('generated redemption codes use the production format', () => {
+  assert.match(generateGiftCardCode(), /^HC-GC-[A-Z0-9]{4}-[A-Z0-9]{4}$/);
 });
 
 test('delivery method selects only the requested notification channels', () => {
