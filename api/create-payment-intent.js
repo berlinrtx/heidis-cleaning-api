@@ -1,5 +1,6 @@
 // api/create-payment-intent.js
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+const { normalizeDeliveryMethod } = require('../lib/gift-card-delivery');
 
 function isTruthy(value) {
   return value === true || value === 'true' || value === 1 || value === '1';
@@ -63,12 +64,13 @@ export default async function handler(req, res) {
 
     if (giftCardPurchase) {
       const missingGiftCardFields = [];
+      const normalizedDeliveryMethod = normalizeDeliveryMethod(deliveryMethod);
 
       if (!senderName) missingGiftCardFields.push('senderName');
       if (!senderEmail) missingGiftCardFields.push('senderEmail');
       if (!recipientName) missingGiftCardFields.push('recipientName');
-      if (!recipientEmail) missingGiftCardFields.push('recipientEmail');
-      if (!recipientPhone) missingGiftCardFields.push('recipientPhone');
+      if (normalizedDeliveryMethod !== 'sms' && !recipientEmail) missingGiftCardFields.push('recipientEmail');
+      if (normalizedDeliveryMethod !== 'email' && !recipientPhone) missingGiftCardFields.push('recipientPhone');
       if (giftCardAmount === undefined || giftCardAmount === null || giftCardAmount === '') missingGiftCardFields.push('giftCardAmount');
       if (giftCardDiscount === undefined || giftCardDiscount === null || giftCardDiscount === '') missingGiftCardFields.push('giftCardDiscount');
       if (giftCardFinalAmount === undefined || giftCardFinalAmount === null || giftCardFinalAmount === '') missingGiftCardFields.push('giftCardFinalAmount');
@@ -102,7 +104,7 @@ export default async function handler(req, res) {
         recipientName: toMetadataValue(recipientName),
         recipientEmail: toMetadataValue(recipientEmail || ''),
         recipientPhone: toMetadataValue(recipientPhone || ''),
-        deliveryMethod: toMetadataValue(deliveryMethod || 'both'),
+        deliveryMethod: normalizeDeliveryMethod(deliveryMethod),
         billingName: toMetadataValue(billingName || ''),
         billingEmail: toMetadataValue(billingEmail || ''),
         billingPhone: toMetadataValue(billingPhone || ''),

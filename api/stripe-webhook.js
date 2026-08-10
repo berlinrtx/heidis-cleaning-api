@@ -4,6 +4,11 @@ const sharp = require('sharp');
 const Stripe = require('stripe');
 const { Resend } = require('resend');
 const { createClient } = require('@supabase/supabase-js');
+const {
+  buildGiftCardSms,
+  normalizeDeliveryMethod,
+  shouldDeliverBy
+} = require('../lib/gift-card-delivery');
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
@@ -168,27 +173,6 @@ function hydrateGiftCardForNotifications(giftCard, metadata, paymentIntent) {
     ),
     code: firstNonEmpty(giftCard.code, 'Code unavailable')
   };
-}
-
-function buildGiftCardSms(giftCard) {
-  const amount = Number.parseFloat(giftCard.original_amount || 0).toFixed(2);
-  const sender = giftCard.sender_name || 'Someone';
-  const recipient = giftCard.recipient_name || 'there';
-  const purchaseDate = new Intl.DateTimeFormat('en-US', {
-    month: '2-digit',
-    day: '2-digit',
-    year: 'numeric',
-    timeZone: 'America/Los_Angeles'
-  }).format(new Date(giftCard.created_at || Date.now()));
-
-  return [
-    'Purchase completed.',
-    `From: ${sender}`,
-    `For: ${recipient}`,
-    `Amount: $${amount}`,
-    `Date: ${purchaseDate}`,
-    'This number is not monitored.'
-  ].join('\n');
 }
 
 async function findGiftCardByPaymentIntent(supabase, paymentIntentId) {
@@ -584,6 +568,7 @@ function getRawBody(req) {
 
 async function handleGiftCardPurchase(paymentIntent) {
   const metadata = paymentIntent.metadata || {};
+  const deliveryMethod = normalizeDeliveryMethod(metadata.deliveryMethod);
   const { supabase, resend, fromEmail, supportEmail } = getServices();
   const storedGiftCard = await createOrGetGiftCard(supabase, paymentIntent, metadata);
   const giftCard = hydrateGiftCardForNotifications(
@@ -593,7 +578,7 @@ async function handleGiftCardPurchase(paymentIntent) {
   );
   const notificationErrors = [];
 
-  if (!giftCard.email_sent_at) {
+  if (shouldDeliverBy(deliveryMethod, 'email') && !giftCard.email_sent_at) {
     const isResendTestRecipient = String(giftCard.recipient_email || '').toLowerCase() === 'it@heidis.inc';
     const cc = isResendTestRecipient
       ? []
@@ -651,7 +636,7 @@ async function handleGiftCardPurchase(paymentIntent) {
     }
   }
 
-  if (!giftCard.sms_sent_at) {
+  if (shouldDeliverBy(deliveryMethod, 'sms') && !giftCard.sms_sent_at) {
     try {
       console.log(`Sending Gift Card SMS to ${giftCard.recipient_phone}`);
       const smsData = await sendGiftCardSms(supabase, giftCard);

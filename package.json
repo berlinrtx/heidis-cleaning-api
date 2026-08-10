@@ -4,7 +4,8 @@
   "description": "Backend para pagos de Heidi's Cleaning",
   "main": "api/create-payment-intent.js",
   "scripts": {
-    "dev": "vercel dev"
+    "dev": "vercel dev",
+    "test": "node --test"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.108.2",
