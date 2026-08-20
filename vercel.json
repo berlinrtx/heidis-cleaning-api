@@ -1,4 +1,10 @@
 {
   "buildCommand": "npm install",
-  "outputDirectory": "."
+  "outputDirectory": ".",
+  "crons": [
+    {
+      "path": "/api/supabase-heartbeat",
+      "schedule": "0 15 * * *"
+    }
+  ]
 }
