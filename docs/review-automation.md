@@ -8,6 +8,8 @@ The Hobby deployment exposes one multiplexed function to stay below Vercel's fun
 - `POST /api/review-automation?action=coupon-validate`
 - `POST /api/review-automation?action=coupon-apply`
 - `POST /api/review-automation?action=coupon-release`
+- `GET /api/review-automation?action=share-feedback&id=...&expires=...&signature=...`
+- `GET /api/review-automation?action=track-share-click&id=...&platform=...&expires=...&signature=...`
 - `GET|POST /api/review-automation?action=google-sync`
 
 Run `supabase/review_automation.sql` once before using the routes. All review tables have RLS enabled, no `anon` or `authenticated` privileges, and explicit `service_role` grants.
@@ -26,7 +28,11 @@ Safe defaults require no additional variables:
 - `REVIEW_INTERNAL_FEEDBACK_MIN_RATING=1`
 - `REVIEW_COUPON_TTL_DAYS=90`
 - `REVIEW_COUPON_RESERVATION_MINUTES=20`
+- `REVIEW_FEEDBACK_SHARE_MODE=disabled`
+- `REVIEW_SHARE_LINK_TTL_DAYS=30`
 
-Public reviews never unlock a coupon. The fixed $40 benefit is attached to the private feedback event. Google review observation remains disabled until Business Profile OAuth values are configured. Coupon emails are only sent when an authenticated administrator explicitly sends them.
+Set `REVIEW_FEEDBACK_SHARE_MODE=all_respondents` to include the same neutral sharing option for every new respondent with an email address. Eligible automatic coupon emails include the secure sharing link; other respondents receive a feedback-only email. The signed page displays only that respondent's private comment and lets the customer copy/edit it before personally opening Google. Yelp is presented as a neutral “Find us on Yelp” link. Opening either destination records one analytics event per respondent and platform in `review_automation_events`; it never generates, sends, or changes a coupon. Optional overrides are `REVIEW_PUBLIC_BASE_URL`, `GOOGLE_REVIEW_URL`, and `YELP_BUSINESS_URL`.
+
+Public reviews never unlock a coupon. The fixed $40 benefit is attached to the private feedback event. Google review observation remains disabled until Business Profile OAuth values are configured.
 
 The existing Stripe webhook processes review-coupon metadata on `payment_intent.succeeded`. Subscribe it to `payment_intent.canceled` as well before checkout integration so abandoned/canceled reservations can be released immediately; the reservation TTL remains a fallback.

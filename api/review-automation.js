@@ -7,6 +7,8 @@ const handlers = {
   'coupon-validate': require('../lib/review-automation/handlers/coupon-validate'),
   'coupon-apply': require('../lib/review-automation/handlers/coupon-apply'),
   'coupon-release': require('../lib/review-automation/handlers/coupon-release'),
+  'share-feedback': require('../lib/review-automation/handlers/share-feedback'),
+  'track-share-click': require('../lib/review-automation/handlers/track-share-click'),
   'google-sync': require('../lib/review-automation/handlers/google-sync')
 };
 
