@@ -1,14 +1,14 @@
 # Review feedback automation (backend only)
 
-The production backend exposes these additive routes:
+The Hobby deployment exposes one multiplexed function to stay below Vercel's function-count limit:
 
-- `POST /api/review-form-response`
-- `GET /api/review-admin-list`
-- `POST /api/review-admin-action`
-- `POST /api/review-coupon-validate`
-- `POST /api/review-coupon-apply`
-- `POST /api/review-coupon-release`
-- `GET|POST /api/google-review-sync`
+- `POST /api/review-automation?action=form-response`
+- `GET /api/review-automation?action=admin-list`
+- `POST /api/review-automation?action=admin-action`
+- `POST /api/review-automation?action=coupon-validate`
+- `POST /api/review-automation?action=coupon-apply`
+- `POST /api/review-automation?action=coupon-release`
+- `GET|POST /api/review-automation?action=google-sync`
 
 Run `supabase/review_automation.sql` once before using the routes. All review tables have RLS enabled, no `anon` or `authenticated` privileges, and explicit `service_role` grants.
 
