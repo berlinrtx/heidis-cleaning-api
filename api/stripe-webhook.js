@@ -4,6 +4,7 @@ const sharp = require('sharp');
 const Stripe = require('stripe');
 const { Resend } = require('resend');
 const { createClient } = require('@supabase/supabase-js');
+const { getSupabase: getReviewSupabase } = require('../lib/review-automation/clients');
 const {
   buildGiftCardSms,
   normalizeDeliveryMethod,
@@ -76,6 +77,40 @@ function getServices() {
     fromEmail,
     supportEmail
   };
+}
+
+async function processReviewCouponEvent(event) {
+  if (!['payment_intent.succeeded', 'payment_intent.canceled'].includes(event.type)) return false;
+  const paymentIntent = event.data?.object;
+  const rewardId = paymentIntent?.metadata?.review_reward_id;
+  const reservationToken = paymentIntent?.metadata?.review_coupon_reservation_token;
+  const discount = paymentIntent?.metadata?.review_coupon_discount_cents;
+  if (!rewardId || !reservationToken || discount !== '4000') return false;
+
+  const supabase = getReviewSupabase();
+  if (event.type === 'payment_intent.succeeded') {
+    const { error } = await supabase.rpc('redeem_review_coupon_verified', {
+      p_reward_id: rewardId,
+      p_payment_intent_id: paymentIntent.id
+    });
+    if (error) throw error;
+  } else {
+    const { error } = await supabase.rpc('release_review_coupon', {
+      p_payment_intent_id: paymentIntent.id,
+      p_reservation_token: reservationToken
+    });
+    if (error) throw error;
+  }
+
+  const { error: eventError } = await supabase.from('review_automation_events').upsert({
+    provider: 'stripe',
+    external_event_id: event.id,
+    event_type: event.type,
+    payload: event,
+    processed_at: new Date().toISOString()
+  }, { onConflict: 'provider,external_event_id' });
+  if (eventError) throw eventError;
+  return true;
 }
 
 function getRingCentralConfig() {
@@ -714,6 +749,13 @@ export default async function handler(req, res) {
   } catch (error) {
     console.error('Stripe webhook signature verification failed:', error.message);
     return res.status(400).json({ error: `Webhook Error: ${error.message}` });
+  }
+
+  try {
+    await processReviewCouponEvent(event);
+  } catch (error) {
+    console.error('Review coupon webhook processing failed:', error);
+    return res.status(500).json({ error: 'Review coupon webhook processing failed' });
   }
 
   if (event.type !== 'payment_intent.succeeded') {
