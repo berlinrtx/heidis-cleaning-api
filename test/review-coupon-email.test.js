@@ -33,6 +33,9 @@ test('review coupon email matches the gift-card visual system and contains essen
   assert.match(html, /Email to schedule/);
   assert.match(html, /Call 650-248-4146/);
   assert.match(html, /private service survey/);
+  assert.match(html, /font-size:26px[^>]*>Hi &lt;Alex&gt;,<\/p>/);
+  assert.doesNotMatch(html, /revisit, edit, or copy your feedback/i);
+  assert.doesNotMatch(html, /open your private feedback page/i);
   assert.doesNotMatch(html, /<Alex>/);
   assert.match(html, /&lt;Alex&gt;/);
 });
@@ -95,7 +98,9 @@ test('coupon delivery sends the branded HTML, plain text, and inline header atta
     assert.deepEqual(payload.to, ['alex@example.com']);
     assert.equal(payload.subject, "Your $25 Heidi's Cleaning thank-you coupon");
     assert.match(payload.html, /Thank you for your feedback!/);
+    assert.doesNotMatch(payload.html, /open your private feedback page/i);
     assert.match(payload.text, /THANKS-ABCD234567/);
+    assert.doesNotMatch(payload.text, /revisit your private feedback/i);
     assert.equal(payload.attachments[0].content_id, 'review-coupon-header');
     assert.equal(payload.attachments[0].content_type, 'image/png');
   } finally {
