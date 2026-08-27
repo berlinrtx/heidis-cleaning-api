@@ -5,6 +5,7 @@ const Stripe = require('stripe');
 const { Resend } = require('resend');
 const { createClient } = require('@supabase/supabase-js');
 const { getSupabase: getReviewSupabase } = require('../lib/review-automation/clients');
+const { isSupportedReviewCouponDiscount } = require('../lib/review-automation/coupons');
 const {
   buildGiftCardSms,
   normalizeDeliveryMethod,
@@ -85,7 +86,7 @@ async function processReviewCouponEvent(event) {
   const rewardId = paymentIntent?.metadata?.review_reward_id;
   const reservationToken = paymentIntent?.metadata?.review_coupon_reservation_token;
   const discount = paymentIntent?.metadata?.review_coupon_discount_cents;
-  if (!rewardId || !reservationToken || discount !== '4000') return false;
+  if (!rewardId || !reservationToken || !isSupportedReviewCouponDiscount(discount)) return false;
 
   const supabase = getReviewSupabase();
   if (event.type === 'payment_intent.succeeded') {

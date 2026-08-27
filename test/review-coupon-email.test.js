@@ -12,6 +12,7 @@ const {
 const reward = {
   customer_name: '<Alex>',
   coupon_code: 'THANKS-ABCD234567',
+  discount_amount: 2500,
   id: '85f1d563-3ad9-4e06-9c07-b2161a3116f8'
 };
 
@@ -26,7 +27,7 @@ test('review coupon email matches the gift-card visual system and contains essen
   assert.match(html, /background:#edf6fc/);
   assert.match(html, /#33a8dc/);
   assert.match(html, /#f693bd/);
-  assert.match(html, /\$40/);
+  assert.match(html, /\$25/);
   assert.match(html, /THANKS-ABCD234567/);
   assert.match(html, /November 25, 2026/);
   assert.match(html, /Email to schedule/);
@@ -46,6 +47,16 @@ test('review coupon email has a branded fallback when the header image is unavai
   assert.doesNotMatch(html, /cid:review-coupon-header/);
   assert.match(html, /Heidi's Inc\./);
   assert.match(html, /Cleaning &amp; Maintenance/);
+});
+
+test('a previously issued $40 coupon keeps its original value when resent', () => {
+  const html = buildCouponEmail({ ...reward, discount_amount: 4000 }, {
+    expires: 'November 25, 2026',
+    shareUrl: 'https://heidis-cleaning-api.vercel.app/private-feedback',
+    includeHeaderImage: false
+  });
+  assert.match(html, /\$40/);
+  assert.doesNotMatch(html, /\$25/);
 });
 
 test('review coupon header reuses the production gift-card brand asset', () => {
@@ -82,7 +93,7 @@ test('coupon delivery sends the branded HTML, plain text, and inline header atta
     assert.equal(result.id, 'email_test');
     assert.equal(request.url, 'https://api.resend.com/emails');
     assert.deepEqual(payload.to, ['alex@example.com']);
-    assert.equal(payload.subject, "Your $40 Heidi's Cleaning thank-you coupon");
+    assert.equal(payload.subject, "Your $25 Heidi's Cleaning thank-you coupon");
     assert.match(payload.html, /Thank you for your feedback!/);
     assert.match(payload.text, /THANKS-ABCD234567/);
     assert.equal(payload.attachments[0].content_id, 'review-coupon-header');

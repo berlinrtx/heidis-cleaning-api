@@ -7,7 +7,9 @@ const test = require('node:test');
 const { safeEqual } = require('../lib/review-automation/auth');
 const { safeIdentifier } = require('../lib/review-automation/booking-match');
 const {
-  contactMatches, createCouponCode, paymentContactMatches, validateCouponRecord
+  CURRENT_REVIEW_COUPON_DISCOUNT_CENTS, contactMatches, createCouponCode,
+  isSupportedReviewCouponDiscount, paymentContactMatches, rewardDiscountCents,
+  validateCouponRecord
 } = require('../lib/review-automation/coupons');
 
 test('review secrets use constant-time equality semantics', () => {
@@ -39,13 +41,23 @@ test('payment contact must be present in trusted PaymentIntent metadata', () => 
 test('coupon validation rejects terminal and reserved states', () => {
   const active = {
     email: null, phone: null, redeemed: false, coupon_cancelled_at: null,
-    expires_at: new Date(Date.now() + 60000).toISOString(), coupon_reserved_at: null
+    expires_at: new Date(Date.now() + 60000).toISOString(), coupon_reserved_at: null,
+    discount_amount: 2500
   };
   assert.equal(validateCouponRecord(active), null);
   assert.equal(validateCouponRecord({ ...active, redeemed: true }), 'COUPON_REDEEMED');
   assert.equal(validateCouponRecord({ ...active, coupon_cancelled_at: new Date().toISOString() }), 'COUPON_CANCELLED');
   assert.equal(validateCouponRecord({ ...active, expires_at: new Date(Date.now() - 1).toISOString() }), 'COUPON_EXPIRED');
   assert.equal(validateCouponRecord({ ...active, coupon_reserved_at: new Date().toISOString() }), 'COUPON_RESERVED');
+});
+
+test('new review coupons use $25 while previously issued $40 coupons remain supported', () => {
+  assert.equal(CURRENT_REVIEW_COUPON_DISCOUNT_CENTS, 2500);
+  assert.equal(rewardDiscountCents({ discount_amount: 2500 }), 2500);
+  assert.equal(rewardDiscountCents({ discount_amount: 4000 }), 4000);
+  assert.equal(isSupportedReviewCouponDiscount(2500), true);
+  assert.equal(isSupportedReviewCouponDiscount('4000'), true);
+  assert.equal(isSupportedReviewCouponDiscount(3000), false);
 });
 
 test('booking identifiers reject PostgREST expression injection', () => {
@@ -59,5 +71,7 @@ test('review schema revokes public roles and binds release to PaymentIntent', ()
   const sql = fs.readFileSync(path.join(__dirname, '../supabase/review_automation.sql'), 'utf8');
   assert.match(sql, /enable row level security/);
   assert.match(sql, /from public, anon, authenticated/);
+  assert.match(sql, /default 2500 check \(discount_amount in \(2500, 4000\)\)/);
+  assert.match(sql, /discount_amount = 2500/);
   assert.match(sql, /where stripe_payment_intent_id = p_payment_intent_id\s+and coupon_reservation_token = p_reservation_token/);
 });

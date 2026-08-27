@@ -21,7 +21,7 @@ create table if not exists public.review_rewards (
       'coupon_sent', 'coupon_redeemed'
     )),
   coupon_code text,
-  discount_amount integer not null default 4000 check (discount_amount = 4000),
+  discount_amount integer not null default 2500 check (discount_amount in (2500, 4000)),
   coupon_reason text check (coupon_reason in ('internal_feedback', 'customer_care', 'admin_courtesy')),
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
@@ -58,7 +58,7 @@ create table if not exists public.review_rewards (
 comment on table public.review_rewards is
   'Private service feedback and fixed-value benefits. Public reviews never unlock benefits.';
 comment on column public.review_rewards.discount_amount is
-  'USD cents. Fixed at 4000; clients never choose this value.';
+  'USD cents. New coupons are 2500. Historical issued coupons may remain 4000.';
 
 create unique index if not exists review_rewards_external_review_key
   on public.review_rewards (review_source, external_review_id)
@@ -174,7 +174,7 @@ begin
 
   update public.review_rewards
   set coupon_code = upper(trim(p_coupon_code)),
-      discount_amount = 4000,
+      discount_amount = 2500,
       coupon_reason = p_reason,
       expires_at = p_expires_at,
       coupon_cancelled_at = null,
