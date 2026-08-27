@@ -35,4 +35,6 @@ Set `REVIEW_FEEDBACK_SHARE_MODE=all_respondents` to include the same neutral sha
 
 Public reviews never unlock a coupon. The fixed $40 benefit is attached to the private feedback event. Google review observation remains disabled until Business Profile OAuth values are configured.
 
+Automatic coupon delivery uses the same visual system as the Gift Card email: the Heidi's blue brand header, a responsive card, a prominent $40 value and selectable code, expiration date, scheduling contacts, and a plain-text fallback. The existing Gift Card header asset is attached inline; a text-based branded header is used if the asset cannot be loaded.
+
 The existing Stripe webhook processes review-coupon metadata on `payment_intent.succeeded`. Subscribe it to `payment_intent.canceled` as well before checkout integration so abandoned/canceled reservations can be released immediately; the reservation TTL remains a fallback.
