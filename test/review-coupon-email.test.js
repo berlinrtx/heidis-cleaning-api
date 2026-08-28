@@ -4,9 +4,11 @@ const assert = require('node:assert/strict');
 const test = require('node:test');
 
 const {
+  buildFeedbackShareEmail,
   buildCouponEmail,
   couponHeaderAttachment,
-  sendCoupon
+  sendCoupon,
+  sendFeedbackShareLink
 } = require('../lib/review-automation/messaging');
 
 const reward = {
@@ -62,6 +64,24 @@ test('a previously issued $40 coupon keeps its original value when resent', () =
   assert.doesNotMatch(html, /\$25/);
 });
 
+test('second feedback email reuses the branded visual system without coupon content', () => {
+  const html = buildFeedbackShareEmail(reward, {
+    shareUrl: 'https://heidis-cleaning-api.vercel.app/private-feedback',
+    includeHeaderImage: true
+  });
+
+  assert.match(html, /cid:review-coupon-header/);
+  assert.match(html, /background:#edf6fc/);
+  assert.match(html, /#33a8dc/);
+  assert.match(html, /#f693bd/);
+  assert.match(html, /font-size:26px[^>]*>Hi &lt;Alex&gt;,<\/p>/);
+  assert.match(html, /Would you like to share it publicly\?/);
+  assert.match(html, /Open my feedback/);
+  assert.match(html, /Google or Yelp/);
+  assert.doesNotMatch(html, /THANKS-ABCD234567/);
+  assert.doesNotMatch(html, /\$25/);
+});
+
 test('review coupon header reuses the production gift-card brand asset', () => {
   const attachment = couponHeaderAttachment();
   assert.ok(attachment);
@@ -103,6 +123,44 @@ test('coupon delivery sends the branded HTML, plain text, and inline header atta
     assert.doesNotMatch(payload.text, /revisit your private feedback/i);
     assert.equal(payload.attachments[0].content_id, 'review-coupon-header');
     assert.equal(payload.attachments[0].content_type, 'image/png');
+  } finally {
+    global.fetch = originalFetch;
+    if (originalFrom === undefined) delete process.env.REVIEW_FROM_EMAIL;
+    else process.env.REVIEW_FROM_EMAIL = originalFrom;
+    if (originalKey === undefined) delete process.env.RESEND_API_KEY;
+    else process.env.RESEND_API_KEY = originalKey;
+    if (originalSecret === undefined) delete process.env.REVIEW_FORM_WEBHOOK_SECRET;
+    else process.env.REVIEW_FORM_WEBHOOK_SECRET = originalSecret;
+  }
+});
+
+test('second feedback delivery sends branded HTML and the inline header attachment', async () => {
+  const originalFetch = global.fetch;
+  const originalFrom = process.env.REVIEW_FROM_EMAIL;
+  const originalKey = process.env.RESEND_API_KEY;
+  const originalSecret = process.env.REVIEW_FORM_WEBHOOK_SECRET;
+  let request;
+
+  process.env.REVIEW_FROM_EMAIL = 'Heidi\'s Cleaning <service@heidis.inc>';
+  process.env.RESEND_API_KEY = 're_test';
+  process.env.REVIEW_FORM_WEBHOOK_SECRET = 'test-secret-that-is-long-enough-for-hmac';
+  global.fetch = async (url, options) => {
+    request = { url, options };
+    return { ok: true, json: async () => ({ id: 'email_feedback_test' }) };
+  };
+
+  try {
+    const result = await sendFeedbackShareLink({
+      ...reward,
+      email: 'alex@example.com'
+    });
+    const payload = JSON.parse(request.options.body);
+
+    assert.equal(result.id, 'email_feedback_test');
+    assert.equal(payload.subject, 'Would you like to share your Heidi’s Cleaning feedback?');
+    assert.match(payload.html, /Open my feedback/);
+    assert.match(payload.text, /Google or Yelp/);
+    assert.equal(payload.attachments[0].content_id, 'review-coupon-header');
   } finally {
     global.fetch = originalFetch;
     if (originalFrom === undefined) delete process.env.REVIEW_FROM_EMAIL;

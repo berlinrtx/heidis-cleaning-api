@@ -31,10 +31,12 @@ Safe defaults require no additional variables:
 - `REVIEW_FEEDBACK_SHARE_MODE=disabled`
 - `REVIEW_SHARE_LINK_TTL_DAYS=30`
 
-Set `REVIEW_FEEDBACK_SHARE_MODE=all_respondents` to include the same neutral sharing option for every new respondent with an email address. Eligible automatic coupon emails include the secure sharing link; other respondents receive a feedback-only email. The signed page displays only that respondent's private comment and lets the customer copy/edit it before personally opening Google. Yelp is presented as a neutral “Find us on Yelp” link. Opening either destination records one analytics event per respondent and platform in `review_automation_events`; it never generates, sends, or changes a coupon. Optional overrides are `REVIEW_PUBLIC_BASE_URL`, `GOOGLE_REVIEW_URL`, and `YELP_BUSINESS_URL`.
+Set `REVIEW_FEEDBACK_SHARE_MODE=all_respondents` to send the same neutral sharing option to every new respondent with an email address. It is delivered as a separate branded email after any coupon email, so the coupon message remains focused only on redemption. The signed page displays only that respondent's private comment and lets the customer copy/edit it before personally opening Google. Yelp is presented as a neutral “Find us on Yelp” link. Opening either destination records one analytics event per respondent and platform in `review_automation_events`; it never generates, sends, or changes a coupon. Optional overrides are `REVIEW_PUBLIC_BASE_URL`, `GOOGLE_REVIEW_URL`, and `YELP_BUSINESS_URL`.
 
 Public reviews never unlock a coupon. New private-feedback coupons are fixed at $25. Previously sent $40 coupons retain their original value and remain redeemable. Google review observation remains disabled until Business Profile OAuth values are configured.
 
 Automatic coupon delivery uses the same visual system as the Gift Card email: the Heidi's blue brand header, a responsive card, a prominent coupon value and selectable code, expiration date, scheduling contacts, and a plain-text fallback. The existing Gift Card header asset is attached inline; a text-based branded header is used if the asset cannot be loaded.
+
+The separate feedback-sharing email reuses the same header asset, colors, typography, responsive card, prominent customer greeting, and fallback header. Its button opens the signed private-feedback page, where the respondent can edit or copy their comment before independently choosing Google or Yelp.
 
 The existing Stripe webhook processes review-coupon metadata on `payment_intent.succeeded`. Subscribe it to `payment_intent.canceled` as well before checkout integration so abandoned/canceled reservations can be released immediately; the reservation TTL remains a fallback.
