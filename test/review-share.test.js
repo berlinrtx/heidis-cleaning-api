@@ -65,7 +65,7 @@ test('share page escapes private feedback and keeps publishing optional', () => 
 test('tracked destinations only allow configured HTTPS URLs', () => {
   const original = process.env.GOOGLE_REVIEW_URL;
   process.env.GOOGLE_REVIEW_URL = 'javascript:alert(1)';
-  assert.match(safeDestination('google'), /^https:\/\/www\.google\.com\//);
+  assert.equal(safeDestination('google'), 'https://g.page/r/CYm7RHh42USbEBM/review');
   if (original === undefined) delete process.env.GOOGLE_REVIEW_URL;
   else process.env.GOOGLE_REVIEW_URL = original;
 });
