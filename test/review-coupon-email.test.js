@@ -161,6 +161,10 @@ test('second feedback delivery sends branded HTML and the inline header attachme
     assert.match(payload.html, /Open my feedback/);
     assert.match(payload.text, /Google or Yelp/);
     assert.equal(payload.attachments[0].content_id, 'review-coupon-header');
+    const scheduledAt = Date.parse(payload.scheduled_at);
+    assert.ok(Number.isFinite(scheduledAt));
+    assert.ok(scheduledAt >= Date.now() + 119000);
+    assert.ok(scheduledAt <= Date.now() + 121000);
   } finally {
     global.fetch = originalFetch;
     if (originalFrom === undefined) delete process.env.REVIEW_FROM_EMAIL;
