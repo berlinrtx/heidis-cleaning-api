@@ -10,6 +10,7 @@ const {
   couponEligibleForRating,
   parseRating
 } = require('../lib/review-automation/handlers/form-response');
+const { isExactlyFiveStars } = require('../lib/review-automation/handlers/admin-action');
 const {
   CURRENT_REVIEW_COUPON_DISCOUNT_CENTS, contactMatches, createCouponCode,
   isSupportedReviewCouponDiscount, paymentContactMatches, rewardDiscountCents,
@@ -71,7 +72,14 @@ test('review coupons require an exact five-star rating', () => {
   assert.equal(couponEligibleForRating('4'), false);
   assert.equal(couponEligibleForRating('3 stars'), false);
   assert.equal(couponEligibleForRating('6'), false);
-  assert.equal(parseRating('5 or more'), 5);
+  assert.ok(Number.isNaN(parseRating('5 or more')));
+});
+
+test('manual issuance cannot bypass the exact five-star requirement', () => {
+  assert.equal(isExactlyFiveStars({ internal_rating: 5 }), true);
+  assert.equal(isExactlyFiveStars({ internal_rating: '5' }), true);
+  assert.equal(isExactlyFiveStars({ internal_rating: 4 }), false);
+  assert.equal(isExactlyFiveStars({ internal_rating: '5 or more' }), false);
 });
 
 test('booking identifiers reject PostgREST expression injection', () => {
