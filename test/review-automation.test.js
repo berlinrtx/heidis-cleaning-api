@@ -7,6 +7,10 @@ const test = require('node:test');
 const { safeEqual } = require('../lib/review-automation/auth');
 const { safeIdentifier } = require('../lib/review-automation/booking-match');
 const {
+  couponEligibleForRating,
+  parseRating
+} = require('../lib/review-automation/handlers/form-response');
+const {
   CURRENT_REVIEW_COUPON_DISCOUNT_CENTS, contactMatches, createCouponCode,
   isSupportedReviewCouponDiscount, paymentContactMatches, rewardDiscountCents,
   validateCouponRecord
@@ -58,6 +62,16 @@ test('new review coupons use $25 while previously issued $40 coupons remain supp
   assert.equal(isSupportedReviewCouponDiscount(2500), true);
   assert.equal(isSupportedReviewCouponDiscount('4000'), true);
   assert.equal(isSupportedReviewCouponDiscount(3000), false);
+});
+
+test('review coupons require an exact five-star rating', () => {
+  assert.equal(couponEligibleForRating('5'), true);
+  assert.equal(couponEligibleForRating('5/5'), true);
+  assert.equal(couponEligibleForRating('5 stars'), true);
+  assert.equal(couponEligibleForRating('4'), false);
+  assert.equal(couponEligibleForRating('3 stars'), false);
+  assert.equal(couponEligibleForRating('6'), false);
+  assert.equal(parseRating('5 or more'), 5);
 });
 
 test('booking identifiers reject PostgREST expression injection', () => {

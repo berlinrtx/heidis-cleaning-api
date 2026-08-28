@@ -25,7 +25,7 @@ Safe defaults require no additional variables:
 
 - `PUBLIC_REVIEW_REQUEST_MODE=disabled`
 - `REVIEW_INTERNAL_FEEDBACK_COUPON_MODE=manual`
-- `REVIEW_INTERNAL_FEEDBACK_MIN_RATING=1`
+- `REVIEW_INTERNAL_FEEDBACK_MIN_RATING=5` (legacy setting; coupon eligibility is enforced as exactly 5/5 in the handler)
 - `REVIEW_COUPON_TTL_DAYS=90`
 - `REVIEW_COUPON_RESERVATION_MINUTES=20`
 - `REVIEW_FEEDBACK_SHARE_MODE=disabled`
@@ -33,7 +33,7 @@ Safe defaults require no additional variables:
 
 Set `REVIEW_FEEDBACK_SHARE_MODE=all_respondents` to send the same neutral sharing option to every new respondent with an email address. It is delivered as a separate branded email after any coupon email, so the coupon message remains focused only on redemption. The signed page displays only that respondent's private comment and lets the customer copy/edit it before personally opening Google. Yelp is presented as a neutral “Find us on Yelp” link. Opening either destination records one analytics event per respondent and platform in `review_automation_events`; it never generates, sends, or changes a coupon. Optional overrides are `REVIEW_PUBLIC_BASE_URL`, `GOOGLE_REVIEW_URL`, and `YELP_BUSINESS_URL`.
 
-Public reviews never unlock a coupon. New private-feedback coupons are fixed at $25. Previously sent $40 coupons retain their original value and remain redeemable. Google review observation remains disabled until Business Profile OAuth values are configured.
+Public reviews never unlock a coupon. Only an exact 5/5 private survey rating can generate a new coupon. New private-feedback coupons are fixed at $25. Previously sent $40 coupons retain their original value and remain redeemable. Google review observation remains disabled until Business Profile OAuth values are configured.
 
 Automatic coupon delivery uses the same visual system as the Gift Card email: the Heidi's blue brand header, a responsive card, a prominent coupon value and selectable code, expiration date, scheduling contacts, and a plain-text fallback. The existing Gift Card header asset is attached inline; a text-based branded header is used if the asset cannot be loaded.
 
