@@ -139,11 +139,13 @@ test('second feedback delivery sends branded HTML and the inline header attachme
   const originalFrom = process.env.REVIEW_FROM_EMAIL;
   const originalKey = process.env.RESEND_API_KEY;
   const originalSecret = process.env.REVIEW_FORM_WEBHOOK_SECRET;
+  const originalGoogleUrl = process.env.GOOGLE_REVIEW_URL;
   let request;
 
   process.env.REVIEW_FROM_EMAIL = 'Heidi\'s Cleaning <service@heidis.inc>';
   process.env.RESEND_API_KEY = 're_test';
   process.env.REVIEW_FORM_WEBHOOK_SECRET = 'test-secret-that-is-long-enough-for-hmac';
+  process.env.GOOGLE_REVIEW_URL = 'https://g.page/r/CYm7RHh42USbEBM/review';
   global.fetch = async (url, options) => {
     request = { url, options };
     return { ok: true, json: async () => ({ id: 'email_feedback_test' }) };
@@ -158,6 +160,7 @@ test('second feedback delivery sends branded HTML and the inline header attachme
 
     assert.equal(result.id, 'email_feedback_test');
     assert.equal(payload.subject, 'Would you like to share your Heidi’s Cleaning feedback?');
+    assert.match(payload.html, /https:\/\/g\.page\/r\/CYm7RHh42USbEBM\/review/);
     assert.match(payload.html, /Open my feedback/);
     assert.match(payload.text, /Google or Yelp/);
     assert.equal(payload.attachments[0].content_id, 'review-coupon-header');
@@ -173,5 +176,7 @@ test('second feedback delivery sends branded HTML and the inline header attachme
     else process.env.RESEND_API_KEY = originalKey;
     if (originalSecret === undefined) delete process.env.REVIEW_FORM_WEBHOOK_SECRET;
     else process.env.REVIEW_FORM_WEBHOOK_SECRET = originalSecret;
+    if (originalGoogleUrl === undefined) delete process.env.GOOGLE_REVIEW_URL;
+    else process.env.GOOGLE_REVIEW_URL = originalGoogleUrl;
   }
 });
