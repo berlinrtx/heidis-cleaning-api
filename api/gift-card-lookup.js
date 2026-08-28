@@ -1,4 +1,5 @@
 const { createClient } = require('@supabase/supabase-js');
+const { formatReviewCoupon } = require('../lib/unified-code-lookup');
 
 function setCorsHeaders(res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -99,7 +100,24 @@ export default async function handler(req, res) {
     }
 
     if (!giftCard) {
-      return res.status(404).json({ error: 'Gift card not found' });
+      const { data: reviewCoupon, error: reviewCouponError } = await supabase
+        .from('review_rewards')
+        .select('coupon_code,customer_name,email,phone,discount_amount,review_status,created_at,expires_at,redeemed,redeemed_at,coupon_cancelled_at,coupon_reserved_at')
+        .eq('coupon_code', code)
+        .maybeSingle();
+
+      if (reviewCouponError) {
+        throw new Error(`Unable to lookup review coupon: ${reviewCouponError.message}`);
+      }
+
+      if (!reviewCoupon) {
+        return res.status(404).json({ error: 'Gift card or review coupon not found' });
+      }
+
+      return res.status(200).json({
+        codeType: 'review_coupon',
+        reviewCoupon: formatReviewCoupon(reviewCoupon)
+      });
     }
 
     const { data: redemptions, error: redemptionsError } = await supabase
@@ -113,6 +131,7 @@ export default async function handler(req, res) {
     }
 
     return res.status(200).json({
+      codeType: 'gift_card',
       giftCard: formatGiftCard(giftCard),
       redemptions: redemptionsError ? [] : (redemptions || []).map(formatRedemption),
       redemptionsSetupRequired: Boolean(redemptionsError)
