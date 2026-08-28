@@ -73,9 +73,9 @@ test('second feedback email reuses the branded visual system without coupon cont
   assert.match(html, /cid:review-coupon-header/);
   assert.match(html, /background:#edf6fc/);
   assert.match(html, /#33a8dc/);
-  assert.match(html, /#f693bd/);
   assert.match(html, /font-size:26px[^>]*>Hi &lt;Alex&gt;,<\/p>/);
   assert.match(html, /Would you like to share it publicly\?/);
+  assert.doesNotMatch(html, />Share your experience<\/span>/);
   assert.match(html, /Open my feedback/);
   assert.match(html, /Google or Yelp/);
   assert.doesNotMatch(html, /THANKS-ABCD234567/);
