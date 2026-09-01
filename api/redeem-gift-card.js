@@ -1,9 +1,11 @@
 const { createClient } = require('@supabase/supabase-js');
+const { formatReviewCoupon } = require('../lib/unified-code-lookup');
+const { isAdmin } = require('../lib/review-automation/auth');
 
 function setCorsHeaders(res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
 }
 
 function getSupabaseClient() {
@@ -61,6 +63,17 @@ function formatRedemption(redemption) {
   };
 }
 
+function formatCouponRedemption(redemption) {
+  return {
+    id: redemption.id,
+    amount: toNumber(redemption.amount_cents) / 100,
+    operatorName: redemption.operator_name,
+    serviceNote: redemption.service_note,
+    reference: redemption.reference,
+    createdAt: redemption.created_at
+  };
+}
+
 function isMissingRedemptionSetup(error) {
   const message = error?.message || '';
   const code = error?.code || '';
@@ -82,7 +95,6 @@ export default async function handler(req, res) {
 
   try {
     const code = normalizeCode(req.body?.code);
-    const amount = Number.parseFloat(req.body?.amount);
     const operatorName = String(req.body?.operatorName || '').trim();
     const serviceNote = String(req.body?.serviceNote || '').trim();
     const reference = String(req.body?.reference || '').trim();
@@ -91,15 +103,48 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Gift card code is required' });
     }
 
-    if (!Number.isFinite(amount) || amount <= 0) {
-      return res.status(400).json({ error: 'Redemption amount must be greater than 0' });
-    }
-
     if (!operatorName) {
       return res.status(400).json({ error: 'Operator name is required' });
     }
 
+    if (!isAdmin(req)) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
     const supabase = getSupabaseClient();
+    if (code.startsWith('THANKS-')) {
+      const { data, error } = await supabase.rpc('redeem_review_coupon_by_code', {
+        p_coupon_code: code,
+        p_operator_name: operatorName,
+        p_service_note: serviceNote,
+        p_reference: reference
+      });
+
+      if (error) {
+        const message = error.message || 'Unable to redeem review coupon';
+        const status = /not found/i.test(message)
+          ? 404
+          : /already|cancelled|expired|reserved/i.test(message)
+            ? 400
+            : 500;
+        return res.status(status).json({ error: message });
+      }
+
+      return res.status(200).json({
+        codeType: 'review_coupon',
+        reviewCoupon: formatReviewCoupon({
+          ...data.review_coupon,
+          coupon_code: data.review_coupon.code
+        }),
+        redemption: formatCouponRedemption(data.redemption)
+      });
+    }
+
+    const amount = Number.parseFloat(req.body?.amount);
+    if (!Number.isFinite(amount) || amount <= 0) {
+      return res.status(400).json({ error: 'Redemption amount must be greater than 0' });
+    }
+
     const { data, error } = await supabase.rpc('redeem_gift_card', {
       p_code: code,
       p_amount: amount,
@@ -126,6 +171,7 @@ export default async function handler(req, res) {
     }
 
     return res.status(200).json({
+      codeType: 'gift_card',
       giftCard: formatGiftCard(data.gift_card),
       redemption: formatRedemption(data.redemption)
     });

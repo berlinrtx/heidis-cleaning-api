@@ -1,10 +1,11 @@
 const { createClient } = require('@supabase/supabase-js');
 const { formatReviewCoupon } = require('../lib/unified-code-lookup');
+const { isAdmin } = require('../lib/review-automation/auth');
 
 function setCorsHeaders(res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
 }
 
 function getSupabaseClient() {
@@ -62,6 +63,17 @@ function formatRedemption(redemption) {
   };
 }
 
+function formatCouponRedemption(redemption) {
+  return {
+    id: redemption.id,
+    amount: toNumber(redemption.amount_cents) / 100,
+    operatorName: redemption.operator_name,
+    serviceNote: redemption.service_note,
+    reference: redemption.reference,
+    createdAt: redemption.created_at
+  };
+}
+
 function isMissingRedemptionsSchema(error) {
   const message = error?.message || '';
   const code = error?.code || '';
@@ -79,6 +91,10 @@ export default async function handler(req, res) {
 
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
+  }
+
+  if (!isAdmin(req)) {
+    return res.status(401).json({ error: 'Unauthorized' });
   }
 
   try {
@@ -102,7 +118,7 @@ export default async function handler(req, res) {
     if (!giftCard) {
       const { data: reviewCoupon, error: reviewCouponError } = await supabase
         .from('review_rewards')
-        .select('coupon_code,customer_name,email,phone,discount_amount,review_status,created_at,expires_at,redeemed,redeemed_at,coupon_cancelled_at,coupon_reserved_at')
+        .select('id,coupon_code,customer_name,email,phone,discount_amount,review_status,created_at,expires_at,redeemed,redeemed_at,coupon_cancelled_at,coupon_reserved_at')
         .eq('coupon_code', code)
         .maybeSingle();
 
@@ -114,9 +130,20 @@ export default async function handler(req, res) {
         return res.status(404).json({ error: 'Gift card or review coupon not found' });
       }
 
+      const { data: redemptions, error: redemptionsError } = await supabase
+        .from('review_coupon_redemptions')
+        .select('*')
+        .eq('review_reward_id', reviewCoupon.id)
+        .order('created_at', { ascending: false });
+
+      if (redemptionsError) {
+        throw new Error(`Unable to lookup coupon redemptions: ${redemptionsError.message}`);
+      }
+
       return res.status(200).json({
         codeType: 'review_coupon',
-        reviewCoupon: formatReviewCoupon(reviewCoupon)
+        reviewCoupon: formatReviewCoupon(reviewCoupon),
+        redemptions: (redemptions || []).map(formatCouponRedemption)
       });
     }
 
